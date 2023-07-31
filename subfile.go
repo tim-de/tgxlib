@@ -3,6 +3,7 @@ package tgxlib
 import (
 	"encoding/binary"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,8 +19,39 @@ type subfile struct {
 	startOffset uint32
 	endOffset uint32
 	fileData []byte
+	readoffset int
 }
 
+// Implement fs.File interface
+func (file subfile) Stat() (fs.FileInfo, error) {
+	return nil, nil
+}
+
+func (file *subfile) Read(buf []byte) (int, error)  {
+	bytes := copy(buf, file.fileData[file.readoffset:])
+	file.readoffset += bytes
+	return bytes, nil
+}
+
+func (file subfile) Close() error {
+	return nil
+}
+// end of fs.File implementation
+
+// Implement sort interface
+type subfileList []subfile
+func (files subfileList) Len() int {
+	return len(files)
+}
+
+func (files subfileList) Swap(i, j int) {
+	files[i], files[j] = files[j], files[i]
+}
+
+func (files subfileList) Less(i, j int) bool {
+	return files[i].fileIdentifier < files[j].fileIdentifier
+}
+// End of sort implementation
 
 func (file *subfile) setIdentifier() {
 	file.fileIdentifier = genIdentifier(strings.ReplaceAll(file.FilePath, "/", "\\"))
