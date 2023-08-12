@@ -8,7 +8,6 @@ import (
 type subFileInfo struct {
 	name string
 	fileLen int64
-	fileMode fs.FileMode
 	modTime time.Time
 }
 
@@ -23,6 +22,10 @@ func (info subFileInfo) Size() int64 {
 func (info subFileInfo) Mode() fs.FileMode {
 	var ret fs.FileMode
 	return ret
+}
+
+func (info subFileInfo) ModTime() time.Time {
+	return info.modTime
 }
 
 func (info subFileInfo) IsDir() bool {

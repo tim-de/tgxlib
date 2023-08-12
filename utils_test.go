@@ -19,6 +19,31 @@ func TestCStrLen(t *testing.T) {
 	}
 }
 
+func TestSliceEqual(t *testing.T) {
+	a := []int{1, 2, 3, 4, 5}
+	b := []int{1, 2, 3, 4, 5}
+	c := []int{1, 2, 3, 3, 5}
+	d := []int{1, 2, 3, 4}
+
+	if !sliceEqual(a, b) {
+		t.Error("Expected true; got false")
+	}
+	if sliceEqual(a, c) {
+		t.Error("Expected false; got true")
+	}
+	if sliceEqual(a, d) {
+		t.Error("Expected false; got true")
+	}
+}
+
+func TestInsert(t *testing.T) {
+	slice := []int{1, 2, 3, 4, 5}
+	slice = insert(slice, 2, 9)
+	if !sliceEqual(slice, []int{1, 2, 9, 3, 4, 5}) {
+		t.Errorf("Got %v; want 1, 2, 9, 3, 4, 5", slice)
+	}
+}
+
 func TestGetSliceSegment(t *testing.T) {
 	buf := make([]uint, 40)
 	buf[20] = 32

@@ -18,25 +18,13 @@ type subfile struct {
 	headerLen uint32
 	startOffset uint32
 	endOffset uint32
-	fileData []byte
-	readoffset int
+	fileHandle fs.File
 }
 
-// Implement fs.File interface
-func (file subfile) Stat() (fs.FileInfo, error) {
-	return nil, nil
+// Implement fs.DirEntry interface
+func (file subfile) Name() string {
+	return filepath.Base(file.FilePath)
 }
-
-func (file *subfile) Read(buf []byte) (int, error)  {
-	bytes := copy(buf, file.fileData[file.readoffset:])
-	file.readoffset += bytes
-	return bytes, nil
-}
-
-func (file subfile) Close() error {
-	return nil
-}
-// end of fs.File implementation
 
 // Implement sort interface
 type subfileList []subfile
@@ -54,7 +42,7 @@ func (files subfileList) Less(i, j int) bool {
 // End of sort implementation
 
 func (file *subfile) setIdentifier() {
-	file.fileIdentifier = genIdentifier(strings.ReplaceAll(file.FilePath, "/", "\\"))
+	file.fileIdentifier = genIdentifier(OsToInternalPath(file.FilePath))
 }
 
 func (file subfile) getHeaderLength() uint32 {
@@ -83,7 +71,7 @@ func ImportSubfile(file_path string) (subfile, error) {
 	}
 	result.fileLen = uint32(fileinfo.Size())
 	result.headerLen = result.getHeaderLength()
-	result.fileData, err = os.ReadFile(file_path)
+	result.fileHandle, err = os.Open(file_path)
 	if err != nil {
 		return subfile{}, err
 	}
@@ -100,10 +88,14 @@ func (file *subfile) readFileSpec(file_spec_buf []byte) {
 	file.headerLen = binary.LittleEndian.Uint32(file_spec_buf[0x64:])
 }
 
-func (file *subfile) readFilePos(file_pos_buf []byte) {
+func (file *subfile) readFilePos(file_pos_buf, tgxbuf []byte) {
 	file.startOffset = binary.LittleEndian.Uint32(file_pos_buf)
 	file.endOffset = binary.LittleEndian.Uint32(file_pos_buf[0x4:])
-	file.fileData = make([]byte, file.fileLen)
+	file.fileHandle = &subfileHandle{
+		header: file,
+		fileData: tgxbuf[file.startOffset:file.endOffset],
+		readOffset: 0,
+	}
 }
 
 func (file subfile) writeFileSpec(buf []byte) error {
@@ -151,7 +143,11 @@ func (file subfile) Dump(rootdir string) error {
 	}
 	defer outfilehandle.Close()
 
-	_, err = outfilehandle.Write(file.fileData)
+	data := make([]byte, file.fileLen)
+	if _, err := file.fileHandle.Read(data); err != nil {
+		return err
+	}
+	_, err = outfilehandle.Write(data)
 	if err != nil {
 		return err
 	}

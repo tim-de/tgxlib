@@ -88,9 +88,9 @@ func (file TgxFile) CreateHeader() []byte {
 
 	for ix, subfile := range file.SubFiles {
 		subfile.fileIndex = uint32(ix)
-		subfile.writeFileSpec(getSliceSegment[byte](filespec_buf, 104, uint(subfile.fileIndex)))
-		subfile.writeLenSpec(getSliceSegment[byte](filelen_buf, 20, uint(subfile.fileIndex)))
-		subfile.writePosSpec(getSliceSegment[byte](filepos_buf, 8, uint(subfile.fileIndex)))
+		subfile.writeFileSpec(getSliceSegment[byte](filespec_buf, 104, int(subfile.fileIndex)))
+		subfile.writeLenSpec(getSliceSegment[byte](filelen_buf, 20, int(subfile.fileIndex)))
+		subfile.writePosSpec(getSliceSegment[byte](filepos_buf, 8, int(subfile.fileIndex)))
 	}
 
 	return output_buffer
@@ -102,16 +102,12 @@ func ReadFromFile(file_path string) (TgxFile, error) {
 	if extension != ".TGX" && extension != ".TGW" {
 		return result, fmt.Errorf("%v is not a .tgx or .tgw file", file_path)
 	}
-	file_handle, err := os.Open(file_path)
+	filebuf, err := os.ReadFile(file_path)
 	if err != nil {
 		return result, err
 	}
-	defer file_handle.Close()
-	header_buffer := make([]byte, 116)
-	_, err = file_handle.Read(header_buffer)
-	if err != nil {
-		return result, err
-	}
+
+	header_buffer := filebuf[:116]
 	packedversion := binary.LittleEndian.Uint32(header_buffer[0xc:])
 	result.Version = unpackVersionFromU32(packedversion)
 
@@ -134,56 +130,20 @@ func ReadFromFile(file_path string) (TgxFile, error) {
 	filelen_buflen := 20 * filelength_count
 	filepos_buflen := 8 * filepos_count
 
-	filespec_buffer := make([]byte, filespec_buflen)
-	filelen_buffer := make([]byte, filelen_buflen)
-	filepos_buffer := make([]byte, filepos_buflen)
-
-	_, err = file_handle.Seek(int64(filespec_offset), 0)
-	if err != nil {
-		return TgxFile{}, err
-	}
-	_, err = file_handle.Read(filespec_buffer)
-	if err != nil {
-		return TgxFile{}, err
-	}
-
-	_, err = file_handle.Seek(int64(filelength_offset), 0)
-	if err != nil {
-		return TgxFile{}, err
-	}
-	_, err = file_handle.Read(filelen_buffer)
-	if err != nil {
-		return TgxFile{}, err
-	}
-
-	_, err = file_handle.Seek(int64(filepos_offset), 0)
-	if err != nil {
-		return TgxFile{}, err
-	}
-	_, err = file_handle.Read(filepos_buffer)
-	if err != nil {
-		return TgxFile{}, err
-	}
+	filespec_buffer := filebuf[filespec_offset:filespec_offset+filespec_buflen]
+	filelen_buffer := filebuf[filelength_offset:filelength_offset+filelen_buflen]
+	filepos_buffer := filebuf[filepos_offset:filepos_offset+filepos_buflen]
 
 	result.SubFiles = make([]subfile, result.FileCount)
 
-	var file_ix uint
-	for file_ix = 0; file_ix < uint(result.FileCount); file_ix += 1 {
+	for file_ix := 0; file_ix < int(result.FileCount); file_ix += 1 {
 		raw_filespec := getSliceSegment[byte](filespec_buffer, 104, file_ix)
 		filespec_ix := binary.LittleEndian.Uint32(raw_filespec[92:])
 		raw_filelength := getSliceSegment[byte](filelen_buffer, 20, file_ix)
 		filelen_ix := binary.LittleEndian.Uint32(raw_filelength[16:])
-		raw_filepos := getSliceSegment[byte](filepos_buffer, 8, uint(filelen_ix))
+		raw_filepos := getSliceSegment[byte](filepos_buffer, 8, int(filelen_ix))
 		result.SubFiles[filespec_ix].readFileSpec(raw_filespec)
-		result.SubFiles[filelen_ix].readFilePos(raw_filepos)
-		_, err = file_handle.Seek(int64(result.SubFiles[filelen_ix].startOffset), 0)
-		if err != nil {
-			return TgxFile{}, err
-		}
-		_, err = file_handle.Read(result.SubFiles[filelen_ix].fileData)
-		if err != nil {
-			return TgxFile{}, err
-		}
+		result.SubFiles[filelen_ix].readFilePos(raw_filepos, filebuf)
 	}
 	return result, nil
 }
@@ -240,10 +200,11 @@ func (file TgxFile) WriteFile(outfile_path string) error {
 		if err != nil {
 			return err
 		}
+		/*
 		_, err = file_handle.Write(subfile.fileData)
 		if err != nil {
 			return err
-		}		
+		}*/		
 	}
 	return nil
 }
