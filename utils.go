@@ -15,25 +15,6 @@ func cStrLen(buf []byte) int {
 	return len(buf)
 }
 
-func sliceEqual[T comparable](a, b []T) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for ix, value := range a {
-		if b[ix] != value {
-			return false
-		}
-	}
-	return true
-}
-
-func insert[T any](slice []T, index int, element T) []T {
-	slice = append(slice[:index+1], slice[index:]...)
-	slice[index] = element
-	return slice
-}
-
 func genIdentifier(filePath string) uint32 {
 	if filePath == "" {
 		return 0
@@ -48,7 +29,7 @@ func genIdentifier(filePath string) uint32 {
 	return result
 }
 
-func getSliceSegment[T any](slice []T, segment_size, index int) []T {
+func getSliceSegment[T interface{}](slice []T, segment_size, index uint) []T {
 	return slice[index * segment_size:(index + 1) * segment_size]
 }
 
