@@ -245,5 +245,14 @@ func (file TgxFile) WriteFile(outfile_path string) error {
 			return err
 		}		
 	}
+	_, err = file_handle.Seek(int64(file.FileLen)-1, 0)
+	if err != nil {
+		return err
+	}
+	_, err = file_handle.Write([]byte{0})
+	if err != nil {
+		return err
+	}
+	
 	return nil
 }
