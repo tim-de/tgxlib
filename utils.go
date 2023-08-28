@@ -1,9 +1,11 @@
 package tgxlib
 
 import (
+	"fmt"
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"unicode"
 )
 
 func cStrLen(buf []byte) int {
@@ -45,4 +47,38 @@ func FindFilesRecursive(root string) ([]string, error) {
 		return []string{}, err
 	}
 	return pathlist, nil
+}
+
+func CaseInsensitiveQuery(path string) string {
+	query := ""
+	for _, char := range path {
+		if unicode.IsLetter(char) {
+			query += fmt.Sprintf("[%c%c]", unicode.ToLower(char), unicode.ToUpper(char))
+		} else {
+			query += string(char)
+		}
+	}
+	return query
+}
+
+func FindExistingPath(path string) (string, error) {
+	pathparts := filepath.SplitList(path)
+	existpath := ""
+	for ix, part := range pathparts {
+		testpath := filepath.Join(existpath, CaseInsensitiveQuery(part))
+		matches, err := filepath.Glob(testpath)
+		if err != nil {
+			return "", err
+		}
+		if len(matches) > 1 {
+			return "", fmt.Errorf("Too many results for %s", testpath)
+		}
+		if len(matches) == 1 {
+			existpath = filepath.Join(existpath, matches[0])
+			pathparts[ix] = filepath.Base(matches[0])
+		} else {
+			break
+		}
+	}
+	return filepath.Join(pathparts ...), nil
 }

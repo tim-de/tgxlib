@@ -136,7 +136,10 @@ func (file subfile) writePosSpec(buf []byte) {
 
 func (file subfile) Dump(rootdir string) error {
 	rootdir = filepath.Clean(rootdir)
-	outfilename := filepath.Join(rootdir, strings.ToUpper(file.FilePath))
+	outfilename, err := FindExistingPath(filepath.Join(rootdir, file.FilePath))
+	if err != nil {
+		return err
+	}
 	subdir := filepath.Dir(outfilename)
 	if _, err := os.Stat(subdir); os.IsNotExist(err) {
 		err := os.MkdirAll(subdir, 0700)
