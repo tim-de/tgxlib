@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -14,7 +15,7 @@ type TgxFile struct {
 	Checksum uint32
 	FileLen uint32
 	FileCount uint32
-	SubFiles []subfile
+	SubFiles subfileList
 }
 
 func (file TgxFile) String() string {
@@ -165,7 +166,7 @@ func ReadFromFile(file_path string) (TgxFile, error) {
 		return TgxFile{}, err
 	}
 
-	result.SubFiles = make([]subfile, result.FileCount)
+	result.SubFiles = make(subfileList, result.FileCount)
 
 	var file_ix uint
 	for file_ix = 0; file_ix < uint(result.FileCount); file_ix += 1 {
@@ -195,7 +196,7 @@ func FromPathList(version VersionNumber, short_id string, pathlist []string) (Tg
 	result.Version = version
 	result.Identifier = short_id
 	result.FileCount = uint32(len(pathlist))
-	result.SubFiles = make([]subfile, result.FileCount)
+	result.SubFiles = make(subfileList, result.FileCount)
 
 	for ix, path := range pathlist {
 		//fmt.Fprintln(os.Stderr, path)
@@ -204,6 +205,9 @@ func FromPathList(version VersionNumber, short_id string, pathlist []string) (Tg
 			return TgxFile{}, err
 		}
 	}
+
+	sort.Sort(result.SubFiles)
+	
 	result.ComputeLengthAndOffsets()
 
 	return result, nil
