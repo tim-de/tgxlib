@@ -60,7 +60,8 @@ func (file *subfile) setIdentifier() {
 func (file subfile) getHeaderLength() uint32 {
 	switch strings.ToUpper(filepath.Ext(file.FilePath)) {
 	case ".WAV":
-		return 0x24
+		return 0x0
+		//return 0x24
 	default:
 		return 0x0
 	}
